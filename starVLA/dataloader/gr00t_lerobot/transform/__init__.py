@@ -39,3 +39,10 @@ from .video import (
     VideoToTensor,
     VideoTransform,
 )
+from .calvin_augmentation import (
+    CALVINAugmentationTransform,
+    CALVINStrongAugmentation,
+    CALVINLightAugmentation,
+    build_calvin_augmentation,
+    LeRobotAugmentationWrapper,
+)

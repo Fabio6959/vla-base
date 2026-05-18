@@ -35,7 +35,34 @@ def save_dataset_statistics(dataset_statistics, run_dir):
 
 def build_dataloader(cfg, dataset_py="lerobot_datasets_oxe"): # TODO now here only is get dataset, we need mv dataloader to here
 
-    if dataset_py == "lerobot_datasets":
+    if dataset_py == "dummy_dataset":
+        from starVLA.dataloader.dummy_dataset import SimpleDummyDataset, collate_fn
+        
+        vla_dataset_cfg = cfg.datasets.vla_data
+        num_samples = getattr(vla_dataset_cfg, "num_samples", 100)
+        image_size = getattr(vla_dataset_cfg, "image_size", [224, 224])
+        action_dim = getattr(vla_dataset_cfg, "action_dim", 7)
+        state_dim = getattr(vla_dataset_cfg, "state_dim", 7)
+        
+        vla_dataset = SimpleDummyDataset(
+            num_samples=num_samples,
+            image_size=tuple(image_size),
+            action_dim=action_dim,
+            state_dim=state_dim,
+        )
+        
+        vla_train_dataloader = DataLoader(
+            vla_dataset,
+            batch_size=cfg.datasets.vla_data.per_device_batch_size,
+            collate_fn=collate_fn,
+            num_workers=0,
+            shuffle=True,
+        )
+        
+        logger.info(f"Created dummy dataset with {len(vla_dataset)} samples")
+        return vla_train_dataloader
+    
+    elif dataset_py == "lerobot_datasets":
         from starVLA.dataloader.lerobot_datasets import get_vla_dataset, collate_fn
         vla_dataset_cfg = cfg.datasets.vla_data
 

@@ -1,0 +1,201 @@
+# ================================================================================
+# QwenPI-LoRA CALVIN 训练配置
+# ================================================================================
+# 
+# 架构：
+#   Frozen SigLIP Vision Encoder (内置在 Qwen3.5-VL)
+#       +
+#   Qwen3.5-VL-4B (LoRA Finetuning)
+#       +
+#   Residual MLP Bridge
+#       +
+#   PI Flow-Matching Action Head (DiT)
+#
+# 训练策略：
+#   Stage 1 (Cold Start, Epoch 0-1):
+#     - 冻结: Vision Encoder, Qwen, LoRA
+#     - 训练: Bridge, Action Head
+#     - 学习率: Bridge 1e-4, Action Head 1e-4
+#
+#   Stage 2 (Joint Training, Epoch >= 2):
+#     - 冻结: Vision Encoder, Qwen 主体
+#     - 训练: LoRA, Bridge, Action Head
+#     - 学习率: LoRA 1e-5, Bridge 5e-5, Action Head 1e-4
+#
+# ================================================================================
+
+run_id: starvla_calvin_lora
+run_root_dir: results/Checkpoints
+seed: 42
+wandb_entity: your_wandb_entity
+wandb_project: starvla_calvin
+is_debug: false
+version_id: "0.22"
+
+# ================================================================================
+# 框架配置
+# ================================================================================
+framework:
+  name: QwenPILoRA
+  
+  # VLM 骨干配置
+  qwenvl:
+    base_vlm: ./playground/Pretrained_models/Qwen3.5-VL-4B-Instruct
+    attn_implementation: flash_attention_2
+    vl_hidden_dim: 2560
+    num_vl_layers: 40
+  
+  # LoRA 配置
+  lora:
+    enabled: true
+    r: 32
+    lora_alpha: 64
+    lora_dropout: 0.05
+    target_modules:
+      - q_proj
+      - k_proj
+      - v_proj
+      - o_proj
+    bias: none
+  
+  # Bridge 网络配置
+  bridge:
+    bridge_type: shared
+    hidden_dim: 2048
+    use_layer_norm: true
+    dropout: 0.0
+  
+  # Action Head 配置
+  action_model:
+    action_model_type: LayerwiseFM
+    action_dim: 7
+    state_dim: 7
+    action_horizon: 16
+    repeated_diffusion_steps: 2
+    num_inference_timesteps: 4
+    add_pos_embed: true
+    max_seq_len: 1024
+    num_target_vision_tokens: 32
+    noise_beta_alpha: 1.5
+    noise_beta_beta: 1.0
+    noise_s: 0.999
+    num_timestep_buckets: 1000
+    diffusion_model_cfg:
+      dropout: 0.2
+      final_dropout: true
+      interleave_self_attention: true
+      norm_type: ada_norm
+      positional_embeddings: null
+      attention_head_dim: 64
+
+# ================================================================================
+# 数据集配置
+# ================================================================================
+datasets:
+  vla_data:
+    dataset_py: lerobot_datasets
+    include_state: false
+    data_root_dir: playground/Datasets/calvin
+    data_mix: calvin_task_ABCD
+    action_type: delta_qpos
+    per_device_batch_size: 8
+    load_all_data_for_training: true
+    video_backend: torchvision_av
+    lerobot_version: v2.0
+    
+    # 数据增强配置
+    augmentation:
+      enabled: true
+      type: standard
+      apply_to:
+        - video.image
+      params:
+        brightness: 0.2
+        contrast: 0.2
+        saturation: 0.1
+        hue: 0.05
+        crop_scale: [0.9, 1.0]
+        grayscale_prob: 0.1
+        affine_degrees: [-5, 5]
+
+# ================================================================================
+# 训练器配置
+# ================================================================================
+trainer:
+  max_train_steps: 100000
+  num_warmup_steps: 5000
+  save_interval: 5000
+  eval_interval: 100
+  is_resume: false
+  
+  # 学习率配置
+  learning_rate:
+    base: 1e-4
+    lora: 1e-5
+    bridge: 5e-5
+    action_model: 1e-4
+  
+  lr_scheduler_type: cosine_with_min_lr
+  scheduler_specific_kwargs:
+    min_lr: 1e-6
+  
+  freeze_modules: ""
+  
+  loss_scale:
+    vla: 1.0
+  
+  max_grad_norm: 1.0
+  weight_decay: 1e-8
+  logging_frequency: 10
+  gradient_clipping: 1.0
+  gradient_accumulation_steps: 4
+  
+  optimizer:
+    name: AdamW
+    betas: [0.9, 0.95]
+    eps: 1e-8
+    weight_decay: 1e-8
+
+# ================================================================================
+# DeepSpeed 配置
+# ================================================================================
+deepspeed:
+  config_path: examples/calvin/train_files/deepspeed_config.json
+  
+  # 或者直接在此配置
+  zero_stage: 2
+  offload_optimizer: true
+  offload_param: false
+  bf16: true
+  
+  # Activation Checkpointing
+  activation_checkpointing: true
+  partition_activations: true
+
+# ================================================================================
+# DataLoader 优化配置
+# ================================================================================
+dataloader:
+  num_workers: 8
+  pin_memory: true
+  persistent_workers: true
+  prefetch_factor: 4
+
+# ================================================================================
+# Checkpoint 配置
+# ================================================================================
+checkpoint:
+  save_every_n_steps: 2500
+  save_every_half_epoch: true
+  save_optimizer: true
+  save_scheduler: true
+
+# ================================================================================
+# 日志配置
+# ================================================================================
+logging:
+  use_wandb: true
+  use_tensorboard: true
+  log_gpu_memory: true
+  log_throughput: true
+  log_grad_norm: true
