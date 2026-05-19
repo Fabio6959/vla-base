@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+NUM_PROCESSES="${NUM_PROCESSES:-1}" \
+PER_DEVICE_BATCH_SIZE="${PER_DEVICE_BATCH_SIZE:-1}" \
+MAX_TRAIN_STEPS="${MAX_TRAIN_STEPS:-20}" \
+SAVE_INTERVAL="${SAVE_INTERVAL:-20}" \
+LOGGING_FREQUENCY="${LOGGING_FREQUENCY:-1}" \
+EVAL_INTERVAL="${EVAL_INTERVAL:-20}" \
+RUN_ID="${RUN_ID:-smoke_pretrain_pi_freeze_qwen_lebero_$(date +%Y%m%d_%H%M%S)}" \
+
+env NUM_PROCESSES="$NUM_PROCESSES" \
+    PER_DEVICE_BATCH_SIZE="$PER_DEVICE_BATCH_SIZE" \
+    MAX_TRAIN_STEPS="$MAX_TRAIN_STEPS" \
+    SAVE_INTERVAL="$SAVE_INTERVAL" \
+    LOGGING_FREQUENCY="$LOGGING_FREQUENCY" \
+    EVAL_INTERVAL="$EVAL_INTERVAL" \
+    RUN_ID="$RUN_ID" \
+    bash "${SCRIPT_DIR}/01_pretrain_pi_freeze_qwen_lebero.sh"
