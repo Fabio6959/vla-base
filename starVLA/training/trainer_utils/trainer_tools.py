@@ -292,7 +292,30 @@ class TrainerUtils:
                     print(f"❌ cannot find module path: {path}")
         else:  # full load
             try:
-                model.load_state_dict(checkpoint, strict=False)
+                model_state = model.state_dict()
+                skipped_mismatched = []
+                compatible_checkpoint = {}
+
+                for key, value in checkpoint.items():
+                    model_value = model_state.get(key)
+                    if (
+                        model_value is not None
+                        and hasattr(value, "shape")
+                        and hasattr(model_value, "shape")
+                        and value.shape != model_value.shape
+                    ):
+                        skipped_mismatched.append((key, tuple(value.shape), tuple(model_value.shape)))
+                        continue
+                    compatible_checkpoint[key] = value
+
+                model.load_state_dict(compatible_checkpoint, strict=False)
+                if skipped_mismatched and dist.get_rank() == 0:
+                    print("WARNING: skipped checkpoint tensors with incompatible shapes:")
+                    for key, checkpoint_shape, model_shape in skipped_mismatched[:20]:
+                        print(f"  - {key}: checkpoint {checkpoint_shape} != model {model_shape}")
+                    if len(skipped_mismatched) > 20:
+                        remaining = len(skipped_mismatched) - 20
+                        print(f"  ... and {remaining} more mismatched tensors")
                 if dist.get_rank() == 0:
                     print("✅ loaded <full_model> model parameters")
                 loaded_modules = ["<full_model>"]
