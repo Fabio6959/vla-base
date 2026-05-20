@@ -1,0 +1,143 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+USER_ID="${USER_ID:-26220364}"
+PROJECT_ROOT="${PROJECT_ROOT:-/inspire/qb-ilm2/project/26summer-camp-10/${USER_ID}}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [ -z "${STARVLA_ROOT:-}" ]; then
+  if [ -f "${SCRIPT_DIR}/starVLA/training/train_starvla.py" ]; then
+    STARVLA_ROOT="${SCRIPT_DIR}"
+  elif [ -f "$(pwd)/starVLA/training/train_starvla.py" ]; then
+    STARVLA_ROOT="$(pwd)"
+  elif [ -f "${PROJECT_ROOT}/vla-base/starVLA/training/train_starvla.py" ]; then
+    STARVLA_ROOT="${PROJECT_ROOT}/vla-base"
+  elif [ -f "${PROJECT_ROOT}/starVLA/starVLA/training/train_starvla.py" ]; then
+    STARVLA_ROOT="${PROJECT_ROOT}/starVLA"
+  else
+    echo "Cannot find StarVLA repo root. Set STARVLA_ROOT manually."
+    exit 1
+  fi
+fi
+
+case "${STARVLA_ROOT}" in
+  root/inspire/*) STARVLA_ROOT="/${STARVLA_ROOT}" ;;
+esac
+
+DEFAULT_BASE_VLM="/inspire/qb-ilm2/project/26summer-camp-10/public/six/starVLA/playground/Pretrained_models/Qwen3.5-4B"
+BASE_VLM="${BASE_VLM:-${DEFAULT_BASE_VLM}}"
+
+FULLTRAIN_STAMP="${FULLTRAIN_STAMP:-$(date +%Y%m%d_%H%M%S)}"
+RUN_ROOT_DIR="${RUN_ROOT_DIR:-${PROJECT_ROOT}/outputs/checkpoints}"
+LOG_DIR="${LOG_DIR:-${PROJECT_ROOT}/outputs/logs}"
+
+# Shared policy spec. Keep these identical across LIBERO pretrain and CALVIN SFT.
+export USER_ID
+export PROJECT_ROOT
+export STARVLA_ROOT
+export BASE_VLM
+export FRAMEWORK_NAME="${FRAMEWORK_NAME:-QwenPI}"
+export ACTION_MODEL_TYPE="${ACTION_MODEL_TYPE:-LayerwiseFM}"
+export ACTION_DIM="${ACTION_DIM:-7}"
+export ACTION_HORIZON="${ACTION_HORIZON:-8}"
+export STATE_DIM="${STATE_DIM:-0}"
+export INCLUDE_STATE="${INCLUDE_STATE:-false}"
+export FREEZE_MODULES="${FREEZE_MODULES:-qwen_vl_interface}"
+export LEROBOT_VERSION="${LEROBOT_VERSION:-v2.0}"
+export RUN_ROOT_DIR
+export LOG_DIR
+
+LIBERO_CONFIG_YAML="${LIBERO_CONFIG_YAML:-./examples/LIBERO/train_files/starvla_cotrain_libero.yaml}"
+CALVIN_CONFIG_YAML="${CALVIN_CONFIG_YAML:-./examples/calvin/train_files/starvla_train_calvin.yaml}"
+LIBERO_DATA_MIX="${LIBERO_DATA_MIX:-libero_all}"
+CALVIN_DATA_MIX="${CALVIN_DATA_MIX:-calvin_task_ABC_D}"
+
+PRETRAIN_RUN_ID="${PRETRAIN_RUN_ID:-fulltrain_libero_pretrain_${FULLTRAIN_STAMP}}"
+FINETUNE_RUN_ID="${FINETUNE_RUN_ID:-fulltrain_calvin_sft_${FULLTRAIN_STAMP}}"
+
+latest_checkpoint() {
+  local ckpt_dir="$1"
+  local latest
+  latest="$(
+    find "${ckpt_dir}" -maxdepth 1 -type f \
+      \( -name "steps_*_pytorch_model.pt" -o -name "steps_*_model.safetensors" \) \
+      | sort -V \
+      | tail -n 1
+  )"
+
+  if [ -z "${latest}" ]; then
+    echo "No checkpoint found in ${ckpt_dir}"
+    exit 1
+  fi
+
+  printf '%s\n' "${latest}"
+}
+
+echo "=============================================="
+echo "Full two-stage QwenPI training"
+echo "=============================================="
+echo "StarVLA root : ${STARVLA_ROOT}"
+echo "Base VLM     : ${BASE_VLM}"
+echo "Policy spec  : ${FRAMEWORK_NAME}/${ACTION_MODEL_TYPE}, action_dim=${ACTION_DIM}, horizon=${ACTION_HORIZON}"
+echo "State input  : include_state=${INCLUDE_STATE}, state_dim=${STATE_DIM}"
+echo "Freeze       : ${FREEZE_MODULES}"
+echo "Run root     : ${RUN_ROOT_DIR}"
+echo "Log dir      : ${LOG_DIR}"
+echo "=============================================="
+
+if [ "${SKIP_LIBERO_PRETRAIN:-0}" = "1" ]; then
+  if [ -z "${PRETRAINED_CHECKPOINT:-}" ]; then
+    echo "SKIP_LIBERO_PRETRAIN=1 requires PRETRAINED_CHECKPOINT=/path/to/libero/checkpoint.pt"
+    exit 1
+  fi
+  LIBERO_ACTION_CKPT="${PRETRAINED_CHECKPOINT}"
+  echo "Skipping LIBERO pretrain. Using checkpoint: ${LIBERO_ACTION_CKPT}"
+else
+  echo "=============================================="
+  echo "Stage 1/2: LIBERO action-head pretraining"
+  echo "=============================================="
+  (
+    export CONFIG_YAML="${LIBERO_CONFIG_YAML}"
+    export DATA_MIX="${LIBERO_DATA_MIX}"
+    export RUN_ID="${PRETRAIN_RUN_ID}"
+    export NUM_PROCESSES="${PRETRAIN_NUM_PROCESSES:-${NUM_PROCESSES:-8}}"
+    export PER_DEVICE_BATCH_SIZE="${PRETRAIN_PER_DEVICE_BATCH_SIZE:-16}"
+    export MAX_TRAIN_STEPS="${PRETRAIN_MAX_TRAIN_STEPS:-80000}"
+    export SAVE_INTERVAL="${PRETRAIN_SAVE_INTERVAL:-10000}"
+    export LOGGING_FREQUENCY="${PRETRAIN_LOGGING_FREQUENCY:-10}"
+    export EVAL_INTERVAL="${PRETRAIN_EVAL_INTERVAL:-100}"
+    export GRADIENT_ACCUMULATION_STEPS="${PRETRAIN_GRADIENT_ACCUMULATION_STEPS:-1}"
+    export WANDB_PROJECT="${PRETRAIN_WANDB_PROJECT:-starVLA_LIBERO_PretrainPI}"
+    bash "${STARVLA_ROOT}/pretrain_scripts/01_pretrain_pi_freeze_qwen_lebero.sh"
+  )
+
+  LIBERO_ACTION_CKPT="$(latest_checkpoint "${RUN_ROOT_DIR}/${PRETRAIN_RUN_ID}/checkpoints")"
+  echo "LIBERO action checkpoint: ${LIBERO_ACTION_CKPT}"
+fi
+
+echo "=============================================="
+echo "Stage 2/2: CALVIN ABC->D action-head SFT"
+echo "=============================================="
+(
+  export CONFIG_YAML="${CALVIN_CONFIG_YAML}"
+  export DATA_MIX="${CALVIN_DATA_MIX}"
+  export RUN_ID="${FINETUNE_RUN_ID}"
+  export PRETRAINED_CHECKPOINT="${LIBERO_ACTION_CKPT}"
+  export RELOAD_MODULES="${RELOAD_MODULES:-action_model}"
+  export NUM_PROCESSES="${FINETUNE_NUM_PROCESSES:-${NUM_PROCESSES:-8}}"
+  export PER_DEVICE_BATCH_SIZE="${FINETUNE_PER_DEVICE_BATCH_SIZE:-4}"
+  export MAX_TRAIN_STEPS="${FINETUNE_MAX_TRAIN_STEPS:-30000}"
+  export SAVE_INTERVAL="${FINETUNE_SAVE_INTERVAL:-5000}"
+  export LOGGING_FREQUENCY="${FINETUNE_LOGGING_FREQUENCY:-10}"
+  export EVAL_INTERVAL="${FINETUNE_EVAL_INTERVAL:-100}"
+  export GRADIENT_ACCUMULATION_STEPS="${FINETUNE_GRADIENT_ACCUMULATION_STEPS:-4}"
+  export WANDB_PROJECT="${FINETUNE_WANDB_PROJECT:-starVLA_CALVIN_FinetunePI}"
+  bash "${STARVLA_ROOT}/finetunescripts/01_finetune_pi_calvin.sh"
+)
+
+echo "=============================================="
+echo "Full training finished"
+echo "=============================================="
+echo "LIBERO run : ${RUN_ROOT_DIR}/${PRETRAIN_RUN_ID}"
+echo "CALVIN run : ${RUN_ROOT_DIR}/${FINETUNE_RUN_ID}"
+echo "Loaded ckpt: ${LIBERO_ACTION_CKPT}"

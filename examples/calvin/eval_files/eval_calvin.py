@@ -86,6 +86,8 @@ class Args:
     #################################################################################################################
     debug: bool = False  # Save debug videos
     eval_log_dir: str = "tmp/calvin/eval_logs"  # Path to save evaluation logs and videos
+    failure_log_path: str = ""  # JSONL failure log path. Defaults to eval_log_dir/failure_log.jsonl
+    failure_summary_path: str = ""  # JSON failure summary path. Defaults to eval_log_dir/failure_summary.json
     reset: bool = False  # If True, reset robot state between tasks (easier)
     diverse_inst: bool = False  # Use diverse instructions (zero-shot generalization)
 
@@ -192,6 +194,49 @@ def load_lang_task(dataset_path: str) -> dict:
     return val_annotations, task_oracle
 
 
+def save_failure_report(
+    failure_events: list[dict],
+    results: list[int],
+    eval_log_dir: str,
+    epoch: int,
+    failure_log_path: str = "",
+    failure_summary_path: str = "",
+):
+    """Save JSONL failures and a compact summary for failure-aware post-training."""
+    eval_log_dir = Path(eval_log_dir)
+    failure_log = Path(failure_log_path) if failure_log_path else eval_log_dir / "failure_log.jsonl"
+    failure_summary = Path(failure_summary_path) if failure_summary_path else eval_log_dir / "failure_summary.json"
+    failure_log.parent.mkdir(parents=True, exist_ok=True)
+    failure_summary.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(failure_log, "w", encoding="utf-8") as f:
+        for event in failure_events:
+            f.write(json.dumps(event, ensure_ascii=False) + "\n")
+
+    failures_by_stage = defaultdict(int)
+    failures_by_subtask = defaultdict(int)
+    for event in failure_events:
+        failures_by_stage[str(event["stage"])] += 1
+        failures_by_subtask[event["subtask"]] += 1
+
+    summary = {
+        "epoch": epoch,
+        "num_sequences": len(results),
+        "num_failures": len(failure_events),
+        "average_chain_length": float(np.mean(results)) if results else 0.0,
+        "stage_success_rates": [float(v) for v in count_success(results)] if results else [],
+        "failures_by_stage": dict(sorted(failures_by_stage.items(), key=lambda item: int(item[0]))),
+        "failures_by_subtask": dict(sorted(failures_by_subtask.items(), key=lambda item: item[1], reverse=True)),
+        "failure_log_path": str(failure_log),
+    }
+
+    with open(failure_summary, "w", encoding="utf-8") as f:
+        json.dump(summary, f, ensure_ascii=False, indent=2)
+
+    print(f"Failure log saved to: {failure_log}")
+    print(f"Failure summary saved to: {failure_summary}")
+
+
 def evaluate_policy_ddp(
     policy,
     env,
@@ -204,6 +249,8 @@ def evaluate_policy_ddp(
     create_plan_tsne=False,
     reset=False,
     diverse_inst=False,
+    failure_log_path="",
+    failure_summary_path="",
 ):
     """
     Run this function to evaluate a model on the CALVIN challenge.
@@ -233,12 +280,16 @@ def evaluate_policy_ddp(
     eval_log_dir = get_log_dir(eval_log_dir)
     with open(eval_sequences_path, "r") as f:
         eval_sequences = json.load(f)
+    if num_sequences is not None and num_sequences > 0:
+        eval_sequences = eval_sequences[:num_sequences]
+    eval_sequences_for_log = list(eval_sequences)
     # device_num = int(torch.distributed.get_world_size())
     # device_id = torch.distributed.get_rank()
     # assert num_sequences % device_num == 0
     # interval_len = int(num_sequences // device_num)
     # eval_sequences = eval_sequences[device_id*interval_len:min((device_id+1)*interval_len, num_sequences)]
     results = []
+    failure_events = []
     plans = defaultdict(list)
     local_sequence_i = 0
     base_sequence_i = 0  # device_id * interval_len
@@ -260,6 +311,7 @@ def evaluate_policy_ddp(
             base_sequence_i + local_sequence_i,
             reset=reset,
             diverse_inst=diverse_inst,
+            failure_events=failure_events,
         )
         results.append(result)
         if not debug:
@@ -268,21 +320,18 @@ def evaluate_policy_ddp(
             )
         local_sequence_i += 1
 
-    def merge_multi_list(res):
-        tmp = []
-        for l in res:
-            tmp.extend(l)
-        return tmp
-
-    def extract_iter_from_tqdm(tqdm_iter):
-        return [_ for _ in tqdm_iter]
-
     # if create_plan_tsne:
     #     create_tsne(plans, eval_log_dir, epoch)
 
-    eval_sequences = extract_iter_from_tqdm(eval_sequences)
-
-    print_and_save(results, eval_sequences, eval_log_dir, epoch)
+    print_and_save(results, eval_sequences_for_log, eval_log_dir, epoch)
+    save_failure_report(
+        failure_events,
+        results,
+        eval_log_dir,
+        epoch,
+        failure_log_path=failure_log_path,
+        failure_summary_path=failure_summary_path,
+    )
 
     return results
 
@@ -300,6 +349,7 @@ def evaluate_sequence(
     sequence_i=-1,
     reset=False,
     diverse_inst=False,
+    failure_events=None,
 ):
     """
     Evaluates a sequence of language instructions.
@@ -330,6 +380,8 @@ def evaluate_sequence(
                 robot_obs=robot_obs,
                 scene_obs=scene_obs,
                 diverse_inst=diverse_inst,
+                failure_events=failure_events,
+                eval_sequence=eval_sequence,
             )
         else:
             success = rollout(
@@ -344,6 +396,8 @@ def evaluate_sequence(
                 subtask_i,
                 sequence_i,
                 diverse_inst=diverse_inst,
+                failure_events=failure_events,
+                eval_sequence=eval_sequence,
             )
         if success:
             success_counter += 1
@@ -366,6 +420,8 @@ def rollout(
     robot_obs=None,
     scene_obs=None,
     diverse_inst=False,
+    failure_events=None,
+    eval_sequence=None,
 ):
     """
     Run the actual rollout on one subtask (which is one natural language instruction).
@@ -418,7 +474,25 @@ def rollout(
     if debug:
         print(colored("fail", "red"), end=" ")
         img_clip = ImageSequenceClip(img_queue, fps=30)
-        img_clip.write_gif(os.path.join(eval_log_dir, f"{sequence_i}-{subtask_i}-{subtask}-fail.gif"), fps=30)
+        gif_path = os.path.join(eval_log_dir, f"{sequence_i}-{subtask_i}-{subtask}-fail.gif")
+        img_clip.write_gif(gif_path, fps=30)
+    else:
+        gif_path = None
+
+    if failure_events is not None:
+        failure_events.append(
+            {
+                "sequence_i": int(sequence_i),
+                "subtask_i": int(subtask_i),
+                "stage": int(subtask_i) + 1,
+                "subtask": subtask,
+                "eval_sequence": list(eval_sequence) if eval_sequence is not None else None,
+                "lang_annotation": lang_annotation,
+                "steps": EP_LEN,
+                "reason": "timeout_or_no_oracle_success",
+                "gif_path": gif_path,
+            }
+        )
     return False
 
 
@@ -447,6 +521,8 @@ def main(args: Args):
         args.create_plan_tsne,
         args.reset,
         args.diverse_inst,
+        args.failure_log_path,
+        args.failure_summary_path,
     )
 
 

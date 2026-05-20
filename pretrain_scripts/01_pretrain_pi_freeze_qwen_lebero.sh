@@ -58,6 +58,11 @@ CONFIG_YAML="${CONFIG_YAML:-./examples/LIBERO/train_files/starvla_cotrain_libero
 DATA_MIX="${DATA_MIX:-libero_all}"
 LEROBOT_VERSION="${LEROBOT_VERSION:-v2.0}"
 FREEZE_MODULES="${FREEZE_MODULES:-qwen_vl_interface}"
+ACTION_MODEL_TYPE="${ACTION_MODEL_TYPE:-LayerwiseFM}"
+ACTION_DIM="${ACTION_DIM:-7}"
+ACTION_HORIZON="${ACTION_HORIZON:-8}"
+STATE_DIM="${STATE_DIM:-0}"
+INCLUDE_STATE="${INCLUDE_STATE:-false}"
 
 RUN_ROOT_DIR="${RUN_ROOT_DIR:-${PROJECT_ROOT}/outputs/checkpoints}"
 RUN_ID="${RUN_ID:-pretrain_pi_freeze_qwen_LIBERO_$(date +%Y%m%d_%H%M%S)}"
@@ -116,6 +121,9 @@ echo "Data root    : ${LIBERO_DATA_ROOT}"
 echo "Data mix     : ${DATA_MIX}"
 echo "Loader       : ${LEROBOT_VERSION}"
 echo "Freeze       : ${FREEZE_MODULES}"
+echo "Action model : ${ACTION_MODEL_TYPE}"
+echo "Action spec  : dim=${ACTION_DIM}, horizon=${ACTION_HORIZON}"
+echo "State input  : include_state=${INCLUDE_STATE}, state_dim=${STATE_DIM}"
 echo "Run root     : ${RUN_ROOT_DIR}"
 echo "Run id       : ${RUN_ID}"
 
@@ -126,12 +134,14 @@ python -m accelerate.commands.launch \
   --config_yaml "${CONFIG_YAML}" \
   --framework.name "${FRAMEWORK_NAME}" \
   --framework.qwenvl.base_vlm "${BASE_VLM}" \
-  --framework.action_model.action_model_type "${ACTION_MODEL_TYPE:-LayerwiseFM}" \
-  --framework.action_model.action_dim "${ACTION_DIM:-7}" \
-  --framework.action_model.action_horizon "${ACTION_HORIZON:-8}" \
+  --framework.action_model.action_model_type "${ACTION_MODEL_TYPE}" \
+  --framework.action_model.action_dim "${ACTION_DIM}" \
+  --framework.action_model.action_horizon "${ACTION_HORIZON}" \
+  --framework.action_model.state_dim "${STATE_DIM}" \
   --datasets.vla_data.data_root_dir "${LIBERO_DATA_ROOT}" \
   --datasets.vla_data.data_mix "${DATA_MIX}" \
   --datasets.vla_data.lerobot_version "${LEROBOT_VERSION}" \
+  --datasets.vla_data.include_state "${INCLUDE_STATE}" \
   --datasets.vla_data.video_backend "${VIDEO_BACKEND:-torchvision_av}" \
   --datasets.vla_data.per_device_batch_size "${PER_DEVICE_BATCH_SIZE:-16}" \
   --trainer.freeze_modules "${FREEZE_MODULES}" \

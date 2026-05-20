@@ -1,0 +1,480 @@
+\documentclass[10pt,a4paper,twocolumn,fontset=none]{ctexart}
+
+% =========================================================
+% Overleaf compile note:
+%   Compiler: XeLaTeX
+%   Place this file at the repository root or keep the assets/ path unchanged.
+%   If you upload only this .tex file, upload the figures under assets/ too.
+% =========================================================
+
+\usepackage{iftex}
+\ifPDFTeX
+  \PackageError{calvin-report}{This Chinese report must be compiled with XeLaTeX on Overleaf}{Open Menu -> Settings -> Compiler, then choose XeLaTeX.}
+\else
+  \usepackage{fontspec}
+  \IfFileExists{../.codex-tectonic/fonts/NotoSansCJKsc-VF.ttf}{
+    \setCJKmainfont[
+      Path=../.codex-tectonic/fonts/,
+      BoldFont=NotoSansCJKsc-VF.ttf,
+      ItalicFont=NotoSansCJKsc-VF.ttf
+    ]{NotoSansCJKsc-VF.ttf}
+    \setCJKsansfont[
+      Path=../.codex-tectonic/fonts/,
+      BoldFont=NotoSansCJKsc-VF.ttf
+    ]{NotoSansCJKsc-VF.ttf}
+    \setCJKmonofont[
+      Path=../.codex-tectonic/fonts/
+    ]{NotoSansMonoCJKsc-VF.ttf}
+  }{
+    \IfFileExists{.codex-tectonic/fonts/NotoSansCJKsc-VF.ttf}{
+      \setCJKmainfont[
+        Path=.codex-tectonic/fonts/,
+        BoldFont=NotoSansCJKsc-VF.ttf,
+        ItalicFont=NotoSansCJKsc-VF.ttf
+      ]{NotoSansCJKsc-VF.ttf}
+      \setCJKsansfont[
+        Path=.codex-tectonic/fonts/,
+        BoldFont=NotoSansCJKsc-VF.ttf
+      ]{NotoSansCJKsc-VF.ttf}
+      \setCJKmonofont[
+        Path=.codex-tectonic/fonts/
+      ]{NotoSansMonoCJKsc-VF.ttf}
+    }{
+      \IfFontExistsTF{Noto Serif CJK SC}{
+        \setCJKmainfont{Noto Serif CJK SC}
+        \setCJKsansfont{Noto Sans CJK SC}
+        \setCJKmonofont{Noto Sans Mono CJK SC}
+      }{
+        \IfFontExistsTF{Noto Sans CJK SC}{
+          \setCJKmainfont{Noto Sans CJK SC}
+          \setCJKsansfont{Noto Sans CJK SC}
+          \setCJKmonofont{Noto Sans Mono CJK SC}
+        }{
+          \IfFontExistsTF{Source Han Serif SC}{
+            \setCJKmainfont{Source Han Serif SC}
+            \setCJKsansfont{Source Han Sans SC}
+            \setCJKmonofont{Source Han Sans SC}
+          }{
+            \IfFontExistsTF{FandolSong-Regular}{
+              \setCJKmainfont{FandolSong-Regular}
+              \setCJKsansfont{FandolHei-Regular}
+              \setCJKmonofont{FandolFang-Regular}
+            }{}
+          }
+        }
+      }
+    }
+  }
+\fi
+
+\usepackage[a4paper,margin=1.35cm,columnsep=0.65cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{float}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{microtype}
+\usepackage{multirow}
+\usepackage{tabularx}
+\usepackage{xcolor}
+
+\definecolor{StarBlue}{HTML}{1F4E79}
+\definecolor{StarTeal}{HTML}{0F766E}
+\definecolor{StarGray}{HTML}{4B5563}
+\definecolor{StarLight}{HTML}{F3F6FA}
+\definecolor{CodeBg}{HTML}{F7F7F8}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=StarBlue,
+  citecolor=StarTeal,
+  urlcolor=StarBlue,
+  pdftitle={CALVIN ABC-D Long-Horizon Manipulation Report},
+  pdfauthor={StarVLA Summer Camp Team}
+}
+
+\captionsetup{font=small,labelfont=bf}
+\setlist[itemize]{leftmargin=1.15em,itemsep=1pt,topsep=2pt}
+\setlist[enumerate]{leftmargin=1.35em,itemsep=1pt,topsep=2pt}
+\pagestyle{fancy}
+\setlength{\headheight}{13pt}
+\fancyhf{}
+\fancyhead[L]{StarVLA CALVIN ABC$\rightarrow$D 实训汇报}
+\fancyhead[R]{\thepage}
+\renewcommand{\headrulewidth}{0.3pt}
+
+\lstset{
+  backgroundcolor=\color{CodeBg},
+  basicstyle=\ttfamily\scriptsize,
+  breaklines=true,
+  columns=fullflexible,
+  frame=single,
+  framerule=0.2pt,
+  rulecolor=\color{StarGray},
+  keepspaces=true,
+  showstringspaces=false,
+  tabsize=2
+}
+
+\graphicspath{{assets/}{../assets/}}
+\newcommand{\safeimage}[2]{%
+  \IfFileExists{assets/#1}{%
+    \includegraphics[width=#2]{assets/#1}%
+  }{%
+    \IfFileExists{../assets/#1}{%
+      \includegraphics[width=#2]{../assets/#1}%
+    }{%
+      \fbox{\parbox[c][3.2cm][c]{#2}{\centering\small Missing figure:\\\texttt{\detokenize{#1}}}}%
+    }%
+  }%
+}
+
+% ===== Fill these fields before final submission =====
+\newcommand{\StudentName}{待填写}
+\newcommand{\TeamName}{待填写}
+\newcommand{\RepoLink}{待填写}
+\newcommand{\WeightLink}{待填写}
+\newcommand{\RunID}{finetune\_pi\_calvin\_ABC\_D\_from\_libero}
+\newcommand{\OursAvg}{待填}
+\newcommand{\OursTaskOne}{待填}
+\newcommand{\OursTaskTwo}{待填}
+\newcommand{\OursTaskThree}{待填}
+\newcommand{\OursTaskFour}{待填}
+\newcommand{\OursTaskFive}{待填}
+
+\begin{document}
+
+\twocolumn[{%
+\begin{center}
+  {\Large\bfseries 基于 StarVLA 的 CALVIN ABC$\rightarrow$D 长程具身操控测评报告\par}
+  \vspace{4pt}
+  {\normalsize \TeamName\quad \StudentName\par}
+  \vspace{2pt}
+  {\small 代码仓库：\RepoLink \qquad 模型权重：\WeightLink\par}
+  \vspace{7pt}
+\end{center}
+
+\noindent\colorbox{StarLight}{%
+\parbox{0.985\textwidth}{%
+\textbf{摘要：}
+本报告面向“VLA/VA 模型长程操控基准测评”实训任务，基于 StarVLA 框架完成 CALVIN ABC$\rightarrow$D split 上的 Action Policy Model 设计、训练、测评与失败分析。
+方案选择 VLA 路线中的 QwenPI 架构：以 Qwen3.5-4B 多模态模型作为视觉-语言骨干，以 Layer-wise Flow-Matching 动作头预测 7-DoF 连续动作块，并采用 LIBERO 预训练、CALVIN ABC$\rightarrow$D 微调、Failure-Aware 后训练的三阶段流程。
+工程侧补齐了 CALVIN 数据准备、训练启动、评测日志、失败样本挖掘与加权动作损失等环节；分析侧围绕跨环境泛化、长程误差累积、动作精度和夹爪时序给出改进依据。
+}%
+}
+
+\vspace{8pt}
+\noindent\textbf{关键词：} 具身智能；Vision-Language-Action；StarVLA；CALVIN；长程操控；Failure-Aware Finetuning
+\vspace{10pt}
+}]
+
+\section{任务概述}
+
+本次实训要求在两天内基于 StarVLA 框架完成一个可复现的 Action Policy Model，并在 CALVIN ABC$\rightarrow$D 长程操控基准上评测。
+CALVIN 的核心难点不是单步抓取，而是模型需要在未见环境 D 中连续完成 5 个子任务；任意中间失败都会截断后续链条，因此它同时考察视觉泛化、语言条件理解、连续动作精度、闭环重规划和误差恢复能力。
+
+交付目标包含五项：代码仓库、模型权重、CALVIN ABC$\rightarrow$D 测评报告、技术路线与 Failure Pattern 文档、10 分钟答辩 PPT。
+本文覆盖其中的测评报告和技术文档，并给出复现实验所需的主要命令与代码路径。
+
+\section{技术路线选择}
+
+\subsection{路线结论}
+
+本方案选择 VLA 路线而非纯 World Model 路线，具体配置为 Qwen3.5-4B + QwenPI + Layer-wise Flow-Matching action head。
+选择原因如下。
+
+\begin{itemize}
+  \item \textbf{数据效率：} Qwen 系列多模态模型已经具备语言-视觉对齐能力，在两天实训周期内，比从视频 DiT 世界模型中重新适配机器人动作更稳妥。
+  \item \textbf{跨环境泛化：} ABC$\rightarrow$D 的主要挑战是视觉外观与初始状态变化。VLA 的语言条件和多层视觉 token 表征有利于把任务语义绑定到目标物体，而不是仅记忆训练场景轨迹。
+  \item \textbf{长程规划：} QwenPI 预测短动作块并在闭环中重规划，避免一次性输出过长轨迹导致误差不可修复；Flow-Matching 动作头比简单 MLP 更适合表达多模态连续动作分布。
+  \item \textbf{计算成本：} Qwen3.5-4B 在显存、训练时长和推理延迟上低于 CosmosPredict2/Wan 等视频生成式世界模型，适合夏令营算力和时间约束。
+\end{itemize}
+
+World Model 路线的优势在于显式吸收视频预测模型中的物理与时序先验，理论上对遮挡、物体持久性和动态场景更有帮助。
+但在本任务中，WM4A 需要额外处理视频 DiT 特征抽取、VAE/T5/DiT 多模块加载和较高推理成本；如果没有充分调参时间，收益不一定能覆盖工程风险。
+
+\begin{figure*}[t]
+  \centering
+  \safeimage{starVLA_overview.png}{0.86\textwidth}
+  \caption{StarVLA 模块化框架。报告方案复用其统一数据、模型、训练与部署接口，仅在动作头、训练脚本和失败样本挖掘处做面向 CALVIN 的适配。}
+  \label{fig:overview}
+\end{figure*}
+
+\section{模型与训练方案}
+
+\subsection{模型结构}
+
+模型输入包含静态相机图像、腕部相机图像和语言指令，输出为 7 维连续动作：
+\[
+a_t = [\Delta x,\Delta y,\Delta z,\Delta r,\Delta p,\Delta y,g] .
+\]
+其中前三维为空间平移，后三维为姿态增量，最后一维为夹爪开合。
+
+QwenPI 首先调用 Qwen3.5-4B 编码图像和指令，并保留多层 hidden states。
+Layer-wise Flow-Matching 动作头将多层 token 作为 cross-attention 条件，学习从噪声动作轨迹到真实动作块的速度场。
+推理时每次预测长度为 8 的动作 chunk，评测端每 5 步重新查询 policy server，使模型在子任务执行中持续闭环修正。
+
+\begin{figure}[H]
+  \centering
+  \safeimage{starvla_variants.png}{\linewidth}
+  \caption{StarVLA 中不同动作头路线。本文采用 PI/Layer-wise FM，它比 OFT 更能表达连续动作不确定性，比 FAST 避免离散 token 量化误差。}
+  \label{fig:variants}
+\end{figure}
+
+\subsection{三阶段训练}
+
+\begin{enumerate}
+  \item \textbf{LIBERO 预训练：} 在 LIBERO 四个子集上训练动作头，并冻结 Qwen 主干，获得基础物体交互、夹爪控制和短程轨迹能力。
+  \item \textbf{CALVIN 微调：} 使用 CALVIN ABC$\rightarrow$D 的 LeRobot 格式训练集进行任务域适配，保持评测环境 D 不作为 D-only 训练集，避免数据泄漏。
+  \item \textbf{Failure-Aware 后训练：} 评测脚本记录失败子任务、阶段、语言指令与 GIF 路径；数据加载器从 failure log 中挖掘高频失败指令，提高其采样比例，并在动作损失中强调平移、夹爪和后半段动作稳定性。
+\end{enumerate}
+
+\subsection{关键超参数}
+
+\begin{table}[H]
+\centering
+\caption{主要训练配置}
+\label{tab:traincfg}
+\begin{tabularx}{\linewidth}{lX}
+\toprule
+项目 & 设置 \\
+\midrule
+Framework & QwenPI \\
+Base VLM & Qwen3.5-4B \\
+Action head & LayerwiseFM / Flow-Matching DiT \\
+Action dim & 7 \\
+Action horizon & 8 \\
+Pretrain data & LIBERO all suites \\
+Finetune data & CALVIN ABC$\rightarrow$D LeRobot train set \\
+Pretrain steps & 80k, frozen Qwen backbone \\
+Finetune steps & 30k, warm-start from LIBERO checkpoint \\
+Post-train steps & 5k, failure-aware sampling \\
+Optimizer & AdamW, cosine schedule \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{工程实现}
+
+\subsection{代码修改概览}
+
+本次工程实现围绕“可跑、可测、可分析、可复训”四个目标组织。
+
+\begin{table}[H]
+\centering
+\caption{主要工程模块}
+\label{tab:code}
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{0.48\linewidth}X}
+\toprule
+文件或目录 & 作用 \\
+\midrule
+\path{pretrain_scripts/01_pretrain_pi_freeze_qwen_lebero.sh} &
+LIBERO 预训练入口，冻结 Qwen，训练 LayerwiseFM 动作头。\\
+\path{finetunescripts/00_prepare_calvin_dataset.sh} &
+检查 CALVIN LeRobot 数据结构并补齐 \texttt{modality.json}。\\
+\path{finetunescripts/01_finetune_pi_calvin.sh} &
+CALVIN ABC$\rightarrow$D 微调主脚本，封装路径、checkpoint、超参和 DeepSpeed 启动。\\
+\path{finetunescripts/03_posttrain_failure_aware_calvin.sh} &
+基于失败日志的短程后训练入口，设置 failure-aware 采样与动作损失权重。\\
+\path{examples/calvin/eval_files/eval_calvin.py} &
+CALVIN 多步评测脚本，输出 Task 1--5 成功率、平均链长和失败日志。\\
+\path{starVLA/dataloader/gr00t_lerobot/datasets.py} &
+从失败日志提取高频失败语言指令，并降低容易样本采样比例。\\
+\path{starVLA/model/modules/action_model/LayerwiseFM_ActionHeader.py} &
+支持动作维度权重和时间步权重，针对夹爪时序与后段漂移加强监督。\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{复现命令}
+
+\begin{lstlisting}[caption={训练与评测主流程}]
+# 1. Check CALVIN LeRobot training data.
+bash finetunescripts/00_prepare_calvin_dataset.sh
+
+# 2. Optional smoke test.
+bash finetunescripts/02_smoke_finetune_pi_calvin.sh
+
+# 3. LIBERO pretraining, if no warm-start checkpoint exists.
+bash pretrain_scripts/01_pretrain_pi_freeze_qwen_lebero.sh
+
+# 4. CALVIN ABC-D finetuning.
+PRETRAINED_CHECKPOINT=/path/to/libero_pretrain.pt \
+bash finetunescripts/01_finetune_pi_calvin.sh
+
+# 5. Start policy server in StarVLA environment.
+bash examples/calvin/eval_files/run_policy_server.sh
+
+# 6. Run CALVIN evaluation in Calvin environment.
+bash examples/calvin/eval_files/eval_calvin.sh
+
+# 7. Failure-aware post-training.
+PRETRAINED_CHECKPOINT=/path/to/calvin_finetune.pt \
+FAILURE_AWARE_LOG_PATH=/path/to/failure_log.jsonl \
+bash finetunescripts/03_posttrain_failure_aware_calvin.sh
+\end{lstlisting}
+
+\section{测评协议与指标}
+
+评测使用 CALVIN ABC$\rightarrow$D split，测试环境为未见过的 D。
+每条序列包含 5 个连续自然语言子任务；若第 \(k\) 个子任务失败，则该序列后续任务不再计入成功。
+设第 \(i\) 条序列成功完成的子任务数为 \(r_i\in\{0,1,2,3,4,5\}\)，共 \(N\) 条序列，则：
+\[
+\text{SR}_k=\frac{1}{N}\sum_{i=1}^{N}\mathbb{I}(r_i\geq k),\qquad
+\text{ACL}=\frac{1}{N}\sum_{i=1}^{N} r_i .
+\]
+其中 \(\text{SR}_k\) 是 Task \(k\) 阶段成功率，ACL 是 Average Chain Length，满分为 5.0。
+
+\section{实验结果}
+
+表 \ref{tab:results} 的第一行用于填写本次最终提交结果。
+当前 `.tex` 已将数值抽成宏，正式提交前只需修改导言区的 \verb|\OursAvg| 与 \verb|\OursTaskOne|--\verb|\OursTaskFive|。
+下方 StarVLA 公开结果仅作为 sanity-check 参考，用于判断本次结果是否处在合理区间。
+
+\begin{table*}[t]
+\centering
+\caption{CALVIN ABC$\rightarrow$D 结果。Task 1--5 为阶段成功率，Avg. Length 为平均任务链长度。}
+\label{tab:results}
+\begin{tabularx}{0.94\textwidth}{>{\raggedright\arraybackslash}Xcccccc}
+\toprule
+模型 & Avg. Length & Task 1 & Task 2 & Task 3 & Task 4 & Task 5 \\
+\midrule
+\textbf{本次提交：QwenPI + Qwen3.5-4B + Failure-Aware} &
+\textbf{\OursAvg} & \textbf{\OursTaskOne} & \textbf{\OursTaskTwo} &
+\textbf{\OursTaskThree} & \textbf{\OursTaskFour} & \textbf{\OursTaskFive} \\
+\midrule
+StarVLA QwenPI, Qwen3-VL-4B-Instruct & 3.472 & 87.7\% & 75.2\% & 67.4\% & 61.8\% & 55.1\% \\
+StarVLA QwenPI, Qwen2.5-VL-3B-Action & 3.576 & 90.9\% & 79.5\% & 69.6\% & 62.2\% & 55.4\% \\
+StarVLA QwenGR00T, Qwen3-VL-4B-Action & 3.757 & 91.1\% & 81.8\% & 74.1\% & 67.6\% & 61.1\% \\
+PI0.5 reference & 3.885 & 92.5\% & 84.0\% & 76.6\% & 71.0\% & 64.4\% \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+\section{Failure Pattern 分析}
+
+CALVIN ABC$\rightarrow$D 中的失败主要不是独立同分布的单任务失败，而是链式任务中的状态偏移不断放大。
+评测脚本将每次失败记录为 JSONL，包含 \texttt{sequence\_i}、\texttt{subtask\_i}、\texttt{stage}、\texttt{subtask}、\texttt{lang\_annotation}、\texttt{reason} 与调试 GIF 路径。
+这些日志既用于人工分类，也直接作为后训练采样信号。
+
+\begin{table*}[t]
+\centering
+\caption{典型失败模式、根因与改进方案}
+\label{tab:failure}
+\begin{tabularx}{0.94\textwidth}{lXXX}
+\toprule
+失败模式 & 现象 & 根因分析 & 已实施/建议改进 \\
+\midrule
+误差累积 &
+前 1--2 个任务成功，但物体或机械臂末端残留偏差导致后续失败。 &
+动作 chunk 后半段对已偏移状态鲁棒性不足，训练中后段动作监督权重偏低。 &
+加入后段动作权重 1.25；推理端每 5 步重规划；保留失败 GIF 做阶段定位。 \\
+\addlinespace
+环境 D 泛化失败 &
+模型能接近目标区域，但对新背景、光照或物体位置变化反应迟缓。 &
+ABC 训练分布和 D 的视觉纹理/布局存在偏移；VLM 主干冻结时域适配能力有限。 &
+使用 LIBERO 预训练增强通用操作先验；可进一步加入颜色抖动、crop、相机扰动和指令改写。 \\
+\addlinespace
+长程规划退化 &
+模型执行了局部可行操作，但与完整 5 步任务链的目标顺序不一致。 &
+训练样本多为短窗口监督，缺少对上一子任务完成状态的显式记忆。 &
+记录失败发生 stage；高频失败 stage 进入后训练；可扩展为历史图像/已完成任务 token 条件。 \\
+\addlinespace
+动作精度不足 &
+接触点偏离、推拉距离不够、旋钮/滑块未达到 oracle 阈值。 &
+连续动作回归对小幅位姿误差敏感；姿态和平移维度尺度不一致。 &
+动作维度加权：平移权重 1.0，旋转 0.7，夹爪 1.5；必要时按任务类别加入末端误差课程学习。 \\
+\addlinespace
+夹爪时序错误 &
+过早闭合、过晚释放或抓取后松开。 &
+夹爪是离散倾向强的连续维度，MSE 中容易被平移/旋转误差淹没。 &
+提高 gripper loss 权重；在失败样本中优先采样 open/close 高频任务；可加入夹爪二分类辅助损失。 \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+\section{后训练设计}
+
+Failure-Aware 后训练包含两条线。
+第一条线是采样重加权：从 \texttt{failure\_log.jsonl} 中统计失败语言指令，选取 Top-K 高频指令作为 hard language set。
+数据加载时保留 hard samples，并以 \(1/w\) 的概率接受非 hard samples，从而在不复制数据的情况下提高失败模式出现频率。
+
+第二条线是动作损失重加权。
+原始 Flow-Matching 速度场损失为：
+\[
+\mathcal{L}_{\mathrm{FM}}=\mathbb{E}\left[\left\|v_{\theta}(x_t,t,c)-(a-\epsilon)\right\|_2^2\right],
+\]
+其中 \(c\) 为视觉-语言条件。
+本实现加入维度权重 \(w_d\) 与时间权重 \(w_t\)：
+\[
+\mathcal{L}_{\mathrm{weighted}}=
+\frac{\sum_{t,d} w_t w_d \left(v_{\theta,t,d}-(a_{t,d}-\epsilon_{t,d})\right)^2}
+{\frac{1}{TD}\sum_{t,d}w_t w_d}.
+\]
+该形式保持 loss 数值尺度稳定，同时让夹爪控制和 chunk 后半段动作对梯度贡献更大。
+
+\section{消融计划}
+
+为证明改进有效，建议最终答辩展示以下最小消融。
+
+\begin{table}[H]
+\centering
+\caption{建议消融实验}
+\label{tab:ablation}
+\begin{tabularx}{\linewidth}{lX}
+\toprule
+实验 & 验证问题 \\
+\midrule
+QwenPI baseline & 仅 CALVIN 微调，作为主基线。\\
++ LIBERO pretrain & 验证跨任务操作先验是否提升 Task 1/2。\\
++ failure-aware sampling & 验证失败高频任务是否提升 Task 3--5。\\
++ weighted action loss & 验证夹爪和后段动作稳定性是否提升平均链长。\\
+QwenGR00T 对比 & 验证双系统动作头是否在长程链条上更稳。\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{个人贡献说明}
+
+\begin{itemize}
+  \item 完成 StarVLA/CALVIN 训练与评测流程梳理，明确训练数据、评测数据和 policy server 的环境边界。
+  \item 实现或整理 LIBERO 预训练、CALVIN 微调、Failure-Aware 后训练脚本，降低路径配置和复现实验成本。
+  \item 在 CALVIN 评测中增加失败日志与 summary 输出，使 Task 1--5 成功率之外的失败根因可追踪。
+  \item 在数据加载器中接入 failure-aware instruction mining，并在 LayerwiseFM 动作头中支持维度/时间加权损失。
+  \item 整理技术路线论证、失败模式分类、复现实验命令和最终答辩材料。
+\end{itemize}
+
+\section{结论}
+
+本文给出了一套面向 CALVIN ABC$\rightarrow$D 的 StarVLA VLA 路线实现：以 Qwen3.5-4B 提供视觉-语言先验，以 QwenPI/LayerwiseFM 进行连续动作块预测，并通过 LIBERO 预训练、CALVIN 微调和 Failure-Aware 后训练逐步提升长程执行稳定性。
+与 WM 路线相比，该方案在两天实训约束下更容易复现和迭代；与单次微调相比，失败日志闭环让后训练能够直接针对 Task 3--5 的链式退化问题。
+最终提交时，需要用完整 CALVIN 评测输出替换表 \ref{tab:results} 的宏，并上传对应 checkpoint 链接。
+
+\begin{thebibliography}{9}
+\bibitem{starvla}
+StarVLA Team.
+\newblock \textit{StarVLA: A Lego-like Codebase for Vision-Language-Action Model Developing}.
+\newblock arXiv:2604.05014, 2026.
+
+\bibitem{calvin}
+Mees, O., Hermann, L., Rosete-Beas, E., and Burgard, W.
+\newblock CALVIN: A benchmark for language-conditioned policy learning for long-horizon robot manipulation tasks.
+\newblock IEEE Robotics and Automation Letters, 2022.
+
+\bibitem{qwen}
+Qwen Team.
+\newblock Qwen-VL and Qwen multimodal model series.
+\newblock Technical report and model documentation, 2024--2026.
+
+\bibitem{cosmos}
+NVIDIA.
+\newblock Cosmos Predict2 video world model documentation.
+\newblock 2026.
+\end{thebibliography}
+
+\end{document}

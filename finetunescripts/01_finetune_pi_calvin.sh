@@ -77,6 +77,9 @@ FREEZE_MODULES="${FREEZE_MODULES:-qwen_vl_interface}"
 ACTION_MODEL_TYPE="${ACTION_MODEL_TYPE:-LayerwiseFM}"
 ACTION_HORIZON="${ACTION_HORIZON:-8}"
 ACTION_DIM="${ACTION_DIM:-7}"
+STATE_DIM="${STATE_DIM:-0}"
+INCLUDE_STATE="${INCLUDE_STATE:-false}"
+RELOAD_MODULES="${RELOAD_MODULES:-action_model}"
 
 DEFAULT_PRETRAINED_CHECKPOINT="/inspire/qb-ilm2/project/26summer-camp-10/26220364/outputs/checkpoints/pretrain_pi_freeze_qwen_LIBERO_20260519_082906/checkpoints/steps_20000_pytorch_model.pt"
 PRETRAINED_CHECKPOINT="${PRETRAINED_CHECKPOINT:-${DEFAULT_PRETRAINED_CHECKPOINT}}"
@@ -134,12 +137,20 @@ echo "=============================================="
 echo "StarVLA root       : ${STARVLA_ROOT}"
 echo "Framework          : ${FRAMEWORK_NAME}"
 echo "Action model type  : ${ACTION_MODEL_TYPE}"
+echo "Action spec        : dim=${ACTION_DIM}, horizon=${ACTION_HORIZON}"
+echo "State input        : include_state=${INCLUDE_STATE}, state_dim=${STATE_DIM}"
 echo "Base VLM           : ${BASE_VLM}"
 echo "Data root          : ${CALVIN_DATA_ROOT}"
 echo "Data mix           : ${DATA_MIX}"
 echo "Loader             : ${LEROBOT_VERSION}"
 echo "Freeze             : ${FREEZE_MODULES:-none}"
+echo "Action LR          : ${ACTION_LR:-1.0e-04}"
+echo "Action dim weights : ${ACTION_LOSS_DIM_WEIGHTS:-none}"
+echo "Late-step weight   : ${ACTION_LOSS_LATE_STEP_WEIGHT:-1.0}"
+echo "Failure log        : ${FAILURE_AWARE_LOG_PATH:-none}"
+echo "Failure weight     : ${FAILURE_AWARE_WEIGHT:-1.0}"
 echo "Pretrained ckpt    : ${PRETRAINED_CHECKPOINT}"
+echo "Reload modules     : ${RELOAD_MODULES}"
 echo "Run root           : ${RUN_ROOT_DIR}"
 echo "Run id             : ${RUN_ID}"
 echo "=============================================="
@@ -154,13 +165,26 @@ python -m accelerate.commands.launch \
   --framework.action_model.action_model_type "${ACTION_MODEL_TYPE}" \
   --framework.action_model.action_dim "${ACTION_DIM}" \
   --framework.action_model.action_horizon "${ACTION_HORIZON}" \
+  --framework.action_model.state_dim "${STATE_DIM}" \
+  --framework.action_model.action_loss_dim_weights "${ACTION_LOSS_DIM_WEIGHTS:-}" \
+  --framework.action_model.action_loss_time_weights "${ACTION_LOSS_TIME_WEIGHTS:-}" \
+  --framework.action_model.action_loss_late_step_weight "${ACTION_LOSS_LATE_STEP_WEIGHT:-1.0}" \
+  --framework.action_model.action_loss_early_step_weight "${ACTION_LOSS_EARLY_STEP_WEIGHT:-1.0}" \
   --datasets.vla_data.data_root_dir "${CALVIN_DATA_ROOT}" \
   --datasets.vla_data.data_mix "${DATA_MIX}" \
   --datasets.vla_data.lerobot_version "${LEROBOT_VERSION}" \
+  --datasets.vla_data.include_state "${INCLUDE_STATE}" \
   --datasets.vla_data.video_backend "${VIDEO_BACKEND:-torchvision_av}" \
   --datasets.vla_data.per_device_batch_size "${PER_DEVICE_BATCH_SIZE:-4}" \
+  --datasets.vla_data.failure_aware_log_path "${FAILURE_AWARE_LOG_PATH:-}" \
+  --datasets.vla_data.failure_aware_weight "${FAILURE_AWARE_WEIGHT:-1.0}" \
+  --datasets.vla_data.failure_aware_top_k "${FAILURE_AWARE_TOP_K:-20}" \
   --trainer.freeze_modules "${FREEZE_MODULES}" \
   --trainer.pretrained_checkpoint "${PRETRAINED_CHECKPOINT}" \
+  --trainer.reload_modules "${RELOAD_MODULES}" \
+  --trainer.learning_rate.base "${BASE_LR:-2.5e-05}" \
+  --trainer.learning_rate.qwen_vl_interface "${QWEN_LR:-1.0e-05}" \
+  --trainer.learning_rate.action_model "${ACTION_LR:-1.0e-04}" \
   --trainer.max_train_steps "${MAX_TRAIN_STEPS:-30000}" \
   --trainer.save_interval "${SAVE_INTERVAL:-5000}" \
   --trainer.logging_frequency "${LOGGING_FREQUENCY:-10}" \
