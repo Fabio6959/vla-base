@@ -8,7 +8,8 @@ Flow-matching header is copyright from GR00T N1.5, but a sample MoE inspired by 
 """
 
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
+from collections.abc import Iterable
+from typing import Any, List, Optional, Tuple
 
 import numpy as np
 import torch
@@ -21,6 +22,24 @@ logger = initialize_overwatch(__name__)
 
 # HuggingFace Default / LLaMa-2 IGNORE_INDEX (for labels)
 IGNORE_INDEX = -100
+
+
+def _parse_state_input_indices(value: Any) -> Optional[List[int]]:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        value = value.strip()
+        if not value:
+            return None
+        if value.startswith("[") and value.endswith("]"):
+            value = value[1:-1]
+        return [int(item.strip()) for item in value.split(",") if item.strip()]
+    if isinstance(value, Iterable):
+        values = list(value)
+        if len(values) == 0:
+            return None
+        return [int(item) for item in values]
+    return [int(value)]
 
 from starVLA.model.framework.base_framework import baseframework
 from starVLA.model.framework.share_tools import merge_framework_config, populate_layerwise_dit_cfg
@@ -164,6 +183,38 @@ class Qwen_PI(baseframework):
         # only ever read `action_horizon` here.
         self.action_horizon = int(self.config.framework.action_model.action_horizon)
 
+    def _prepare_state_tensor(
+        self,
+        state: List,
+        *,
+        device: torch.device,
+        dtype: torch.dtype,
+    ) -> Optional[torch.Tensor]:
+        if state is None:
+            return None
+
+        state_tensor = torch.tensor(np.array(state), device=device, dtype=dtype)
+        action_cfg = self.config.framework.action_model
+        expected_dim = int(action_cfg.get("state_dim", state_tensor.shape[-1]) or 0)
+        if expected_dim == 0:
+            return None
+
+        state_input_indices = _parse_state_input_indices(
+            action_cfg.get("state_input_indices", None)
+        )
+        if state_input_indices is not None:
+            state_tensor = state_tensor[..., state_input_indices]
+
+        if state_tensor.shape[-1] != expected_dim:
+            raise ValueError(
+                "State input dim mismatch: dataloader produced "
+                f"{state_tensor.shape[-1]} dims, but action_model.state_dim is "
+                f"{expected_dim}. Set framework.action_model.state_input_indices "
+                "to select the checkpoint-compatible state columns."
+            )
+
+        return state_tensor
+
     def _encode_vl_hidden_states(
         self, batch_images: List, instructions: List[str]
     ) -> List[torch.Tensor]:
@@ -227,8 +278,13 @@ class Qwen_PI(baseframework):
 
             state_repeated = None
             if state is not None:
-                state = torch.tensor(np.array(state), device=base_hidden.device, dtype=base_hidden.dtype)
-                state_repeated = state.repeat(repeated_diffusion_steps, 1, 1)
+                state = self._prepare_state_tensor(
+                    state,
+                    device=base_hidden.device,
+                    dtype=base_hidden.dtype,
+                )
+                if state is not None:
+                    state_repeated = state.repeat(repeated_diffusion_steps, 1, 1)
 
             action_loss = self.action_model(
                 vl_embs_list_repeated,
@@ -272,10 +328,10 @@ class Qwen_PI(baseframework):
         vl_embs_list = self._encode_vl_hidden_states(batch_images, instructions)
         base_hidden = vl_embs_list[-1]
 
-        state = (
-            torch.from_numpy(np.array(state)).to(base_hidden.device, dtype=base_hidden.dtype)
-            if state is not None
-            else None
+        state = self._prepare_state_tensor(
+            state,
+            device=base_hidden.device,
+            dtype=base_hidden.dtype,
         )
         # Step 4: Action Expert Forward and Loss
         with torch.autocast("cuda", dtype=torch.float32):

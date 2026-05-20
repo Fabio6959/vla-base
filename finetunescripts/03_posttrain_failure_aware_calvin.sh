@@ -18,6 +18,8 @@ Failure-Aware Post-Training interface inputs:
     ACTION_LOSS_DIM_WEIGHTS   CALVIN action dim weights x,y,z,roll,pitch,yaw,gripper.
     ACTION_LOSS_LATE_STEP_WEIGHT
                                Linear chunk-time weighting end value. Default: 1.25.
+    STATE_INPUT_INDICES        Comma-separated state columns for the action head.
+                               For CALVIN libero_franka 8D state with 7D ckpt, use 0,1,2,3,4,5,7.
     FREEZE_MODULES            Modules frozen during post-training. Default: qwen_vl_interface.
     RELOAD_MODULES            Modules loaded from warm-start checkpoint. Default: action_model.
 EOF
@@ -55,6 +57,7 @@ export FAILURE_AWARE_WEIGHT="${FAILURE_AWARE_WEIGHT:-2.0}"
 export FAILURE_AWARE_TOP_K="${FAILURE_AWARE_TOP_K:-20}"
 export FREEZE_MODULES="${FREEZE_MODULES:-qwen_vl_interface}"
 export RELOAD_MODULES="${RELOAD_MODULES:-action_model}"
+export STATE_INPUT_INDICES="${STATE_INPUT_INDICES:-}"
 
 echo "=============================================="
 echo "Failure-aware CALVIN post-training"
@@ -67,6 +70,7 @@ echo "Late-step weight    : ${ACTION_LOSS_LATE_STEP_WEIGHT}"
 echo "Failure log         : ${FAILURE_AWARE_LOG_PATH:-none}"
 echo "Failure weight      : ${FAILURE_AWARE_WEIGHT}"
 echo "Failure top-k       : ${FAILURE_AWARE_TOP_K}"
+echo "State indices       : ${STATE_INPUT_INDICES:-all}"
 echo "Freeze modules      : ${FREEZE_MODULES}"
 echo "Reload modules      : ${RELOAD_MODULES}"
 echo "=============================================="

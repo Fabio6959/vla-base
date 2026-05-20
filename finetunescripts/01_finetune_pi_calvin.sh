@@ -78,6 +78,7 @@ ACTION_MODEL_TYPE="${ACTION_MODEL_TYPE:-LayerwiseFM}"
 ACTION_HORIZON="${ACTION_HORIZON:-8}"
 ACTION_DIM="${ACTION_DIM:-7}"
 STATE_DIM="${STATE_DIM:-0}"
+STATE_INPUT_INDICES="${STATE_INPUT_INDICES:-}"
 INCLUDE_STATE="${INCLUDE_STATE:-false}"
 RELOAD_MODULES="${RELOAD_MODULES:-action_model}"
 
@@ -139,7 +140,7 @@ echo "StarVLA root       : ${STARVLA_ROOT}"
 echo "Framework          : ${FRAMEWORK_NAME}"
 echo "Action model type  : ${ACTION_MODEL_TYPE}"
 echo "Action spec        : dim=${ACTION_DIM}, horizon=${ACTION_HORIZON}"
-echo "State input        : include_state=${INCLUDE_STATE}, state_dim=${STATE_DIM}"
+echo "State input        : include_state=${INCLUDE_STATE}, state_dim=${STATE_DIM}, indices=${STATE_INPUT_INDICES:-all}"
 echo "Base VLM           : ${BASE_VLM}"
 echo "Data root          : ${CALVIN_DATA_ROOT}"
 echo "Data mix           : ${DATA_MIX}"
@@ -169,6 +170,7 @@ python -m accelerate.commands.launch \
   --framework.action_model.action_dim "${ACTION_DIM}" \
   --framework.action_model.action_horizon "${ACTION_HORIZON}" \
   --framework.action_model.state_dim "${STATE_DIM}" \
+  --framework.action_model.state_input_indices "${STATE_INPUT_INDICES}" \
   --framework.action_model.action_loss_dim_weights "${ACTION_LOSS_DIM_WEIGHTS:-}" \
   --framework.action_model.action_loss_time_weights "${ACTION_LOSS_TIME_WEIGHTS:-}" \
   --framework.action_model.action_loss_late_step_weight "${ACTION_LOSS_LATE_STEP_WEIGHT:-1.0}" \
