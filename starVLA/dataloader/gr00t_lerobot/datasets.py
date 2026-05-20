@@ -40,6 +40,7 @@ from tqdm import tqdm
 from PIL import Image
 import torch.distributed as dist
 
+from starVLA.training.post_training.failure_aware import build_sampler_from_data_cfg
 from starVLA.dataloader.gr00t_lerobot.video import get_all_frames, get_frames_by_timestamps
 
 from starVLA.dataloader.gr00t_lerobot.embodiment_tags import EmbodimentTag
@@ -2160,10 +2161,7 @@ class LeRobotMixtureDataset(Dataset):
         self.seed = seed
         self.mode = mode
         self.data_cfg = kwargs["data_cfg"] if "data_cfg" in kwargs else None
-        self._failure_aware_langs = self._load_failure_aware_langs()
-        self._failure_aware_weight = 1.0
-        if self.data_cfg is not None:
-            self._failure_aware_weight = max(1.0, float(self.data_cfg.get("failure_aware_weight", 1.0)))
+        self._failure_aware_sampler = build_sampler_from_data_cfg(self.data_cfg, seed=self.seed)
 
         # Set properties for sampling
 
@@ -2251,54 +2249,8 @@ class LeRobotMixtureDataset(Dataset):
 
         self.update_metadata(metadata_config)
 
-    @staticmethod
-    def _normalize_lang(text: str) -> str:
-        return " ".join(str(text).lower().strip().split())
-
-    def _load_failure_aware_langs(self) -> set[str]:
-        if self.data_cfg is None:
-            return set()
-
-        hard_langs = set()
-        raw_langs = self.data_cfg.get("failure_aware_langs", None)
-        if raw_langs:
-            if isinstance(raw_langs, str):
-                stripped = raw_langs.strip()
-                if stripped.startswith("["):
-                    raw_langs = json.loads(stripped)
-                else:
-                    raw_langs = [part.strip() for part in stripped.split("||") if part.strip()]
-            hard_langs.update(self._normalize_lang(lang) for lang in raw_langs)
-
-        log_path = self.data_cfg.get("failure_aware_log_path", "")
-        if log_path:
-            if os.path.exists(log_path):
-                counts = defaultdict(int)
-                with open(log_path, "r", encoding="utf-8") as f:
-                    for line in f:
-                        if not line.strip():
-                            continue
-                        event = json.loads(line)
-                        lang = event.get("lang_annotation", "")
-                        if lang:
-                            counts[self._normalize_lang(lang)] += 1
-                top_k = int(self.data_cfg.get("failure_aware_top_k", 20))
-                ranked_langs = sorted(counts.items(), key=lambda item: item[1], reverse=True)
-                hard_langs.update(lang for lang, _ in ranked_langs[:top_k])
-            elif not dist.is_initialized() or dist.get_rank() == 0:
-                print(f"Warning: failure_aware_log_path not found: {log_path}")
-
-        if hard_langs and (not dist.is_initialized() or dist.get_rank() == 0):
-            print(f"Failure-aware sampling enabled for {len(hard_langs)} language instructions")
-        return hard_langs
-
     def _accept_failure_aware_sample(self, sample: dict) -> bool:
-        if not self._failure_aware_langs or self._failure_aware_weight <= 1.0:
-            return True
-        lang = self._normalize_lang(sample.get("lang", ""))
-        if lang in self._failure_aware_langs:
-            return True
-        return random.random() < (1.0 / self._failure_aware_weight)
+        return self._failure_aware_sampler.accept(sample)
 
     @property
     def dataset_lengths(self) -> np.ndarray:

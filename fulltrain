@@ -50,7 +50,7 @@ export LOG_DIR
 LIBERO_CONFIG_YAML="${LIBERO_CONFIG_YAML:-./examples/LIBERO/train_files/starvla_cotrain_libero.yaml}"
 CALVIN_CONFIG_YAML="${CALVIN_CONFIG_YAML:-./examples/calvin/train_files/starvla_train_calvin.yaml}"
 LIBERO_DATA_MIX="${LIBERO_DATA_MIX:-libero_all}"
-CALVIN_DATA_MIX="${CALVIN_DATA_MIX:-calvin_task_ABC_D}"
+CALVIN_DATA_MIX="${CALVIN_DATA_MIX:-calvin_task_D_D_v3.0}"
 
 PRETRAIN_RUN_ID="${PRETRAIN_RUN_ID:-fulltrain_libero_pretrain_${FULLTRAIN_STAMP}}"
 FINETUNE_RUN_ID="${FINETUNE_RUN_ID:-fulltrain_calvin_sft_${FULLTRAIN_STAMP}}"

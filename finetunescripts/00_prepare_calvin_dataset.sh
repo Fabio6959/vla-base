@@ -49,7 +49,7 @@ case "${CALVIN_DATA_ROOT}" in
   root/inspire/*) CALVIN_DATA_ROOT="/${CALVIN_DATA_ROOT}" ;;
 esac
 
-CALVIN_DATA_MIX="${CALVIN_DATA_MIX:-calvin_task_ABC_D}"
+CALVIN_DATA_MIX="${CALVIN_DATA_MIX:-calvin_task_D_D_v3.0}"
 MODALITY_TEMPLATE="${STARVLA_ROOT}/examples/calvin/train_files/modality.json"
 MIXTURES_FILE="${STARVLA_ROOT}/starVLA/dataloader/gr00t_lerobot/mixtures.py"
 
@@ -59,9 +59,9 @@ echo "Data root   : ${CALVIN_DATA_ROOT}"
 echo "Data mix    : ${CALVIN_DATA_MIX}"
 echo "Template    : ${MODALITY_TEMPLATE}"
 
-if [ "${CALVIN_DATA_MIX}" = "calvin_task_D_D_v3.0" ]; then
-  echo "Refusing to prepare D as finetune training data."
-  echo "Use CALVIN_DATA_MIX=calvin_task_ABC_D for the provided training dataset."
+if [ "${CALVIN_DATA_MIX}" = "calvin_task_D_D_v3.0" ] && [ "${ALLOW_CALVIN_D_TRAINING:-1}" != "1" ]; then
+  echo "Refusing to prepare D as finetune training data because ALLOW_CALVIN_D_TRAINING is not 1."
+  echo "Set ALLOW_CALVIN_D_TRAINING=1 if D training is intended."
   exit 1
 fi
 

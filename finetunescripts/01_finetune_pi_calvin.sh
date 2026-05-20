@@ -71,7 +71,7 @@ fi
 
 FRAMEWORK_NAME="${FRAMEWORK_NAME:-QwenPI}"
 CONFIG_YAML="${CONFIG_YAML:-./examples/calvin/train_files/starvla_train_calvin.yaml}"
-DATA_MIX="${DATA_MIX:-${CALVIN_DATA_MIX:-calvin_task_ABC_D}}"
+DATA_MIX="${DATA_MIX:-${CALVIN_DATA_MIX:-calvin_task_D_D_v3.0}}"
 LEROBOT_VERSION="${LEROBOT_VERSION:-v2.0}"
 FREEZE_MODULES="${FREEZE_MODULES:-qwen_vl_interface}"
 ACTION_MODEL_TYPE="${ACTION_MODEL_TYPE:-LayerwiseFM}"
@@ -89,8 +89,9 @@ RUN_ID="${RUN_ID:-finetune_pi_calvin_ABC_D_from_libero_$(date +%Y%m%d_%H%M%S)}"
 LOG_DIR="${LOG_DIR:-${PROJECT_ROOT}/outputs/logs}"
 mkdir -p "${RUN_ROOT_DIR}" "${LOG_DIR}" "${RUN_ROOT_DIR}/${RUN_ID}"
 
-if [ "${DATA_MIX}" = "calvin_task_D_D_v3.0" ]; then
-  echo "Refusing to finetune on D-only data. Use DATA_MIX=calvin_task_ABC_D for the provided training dataset."
+if [ "${DATA_MIX}" = "calvin_task_D_D_v3.0" ] && [ "${ALLOW_CALVIN_D_TRAINING:-1}" != "1" ]; then
+  echo "Refusing to finetune on D-only data because ALLOW_CALVIN_D_TRAINING is not 1."
+  echo "Set ALLOW_CALVIN_D_TRAINING=1 if D training is intended."
   exit 1
 fi
 
@@ -132,7 +133,7 @@ fi
 cp "$0" "${RUN_ROOT_DIR}/${RUN_ID}/"
 
 echo "=============================================="
-echo "Starting QwenPI finetuning on CALVIN ABC-D training dataset"
+echo "Starting QwenPI finetuning on CALVIN training dataset"
 echo "=============================================="
 echo "StarVLA root       : ${STARVLA_ROOT}"
 echo "Framework          : ${FRAMEWORK_NAME}"
@@ -152,6 +153,7 @@ echo "Failure log        : ${FAILURE_AWARE_LOG_PATH:-none}"
 echo "Failure weight     : ${FAILURE_AWARE_WEIGHT:-1.0}"
 echo "Pretrained ckpt    : ${PRETRAINED_CHECKPOINT}"
 echo "Reload modules     : ${RELOAD_MODULES}"
+echo "Extra train args   : $*"
 echo "Run root           : ${RUN_ROOT_DIR}"
 echo "Run id             : ${RUN_ID}"
 echo "=============================================="
@@ -196,4 +198,5 @@ python -m accelerate.commands.launch \
   --run_id "${RUN_ID}" \
   --wandb_project "${WANDB_PROJECT:-starVLA_CALVIN_FinetunePI}" \
   --wandb_entity "${WANDB_ENTITY:-disabled}" \
+  "$@" \
   2>&1 | tee "${LOG_DIR}/${RUN_ID}_train.log"

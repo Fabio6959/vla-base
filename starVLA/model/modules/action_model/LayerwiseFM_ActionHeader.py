@@ -17,6 +17,7 @@ from starVLA.model.modules.action_model.flow_matching_head.action_encoder import
     swish,
 )
 from starVLA.model.modules.action_model.flow_matching_head.cross_attention_dit import DiT
+from starVLA.training.post_training.failure_aware import weighted_velocity_loss
 
 # TODO try to meger DiT Modules with follow_match_head, they are just the same arch, but diff loss, use diffusers package will be simple
 
@@ -285,64 +286,8 @@ class LayerwiseFlowmatchingActionHead(nn.Module):
     def prepare_input(self, batch: dict) -> BatchFeature:
         return BatchFeature(data=batch)
 
-    @staticmethod
-    def _parse_float_sequence(value):
-        if value is None or value == "":
-            return None
-        if isinstance(value, str):
-            stripped = value.strip()
-            if not stripped or stripped.lower() in {"none", "null"}:
-                return None
-            if stripped.startswith("["):
-                import json
-
-                return [float(v) for v in json.loads(stripped)]
-            return [float(v.strip()) for v in stripped.split(",") if v.strip()]
-        return [float(v) for v in value]
-
-    def _loss_weight_vector(self, key: str, expected_len: int, device, dtype):
-        weights = self._parse_float_sequence(self.config.get(key, None))
-        if weights is None:
-            return None
-        if len(weights) != expected_len:
-            raise ValueError(f"{key} must have length {expected_len}, got {len(weights)}: {weights}")
-        return torch.tensor(weights, device=device, dtype=dtype)
-
     def _action_velocity_loss(self, pred_actions: torch.Tensor, velocity: torch.Tensor) -> torch.Tensor:
-        squared_error = (pred_actions - velocity) ** 2
-        _, horizon, action_dim = squared_error.shape
-        weights = torch.ones((1, horizon, action_dim), device=squared_error.device, dtype=squared_error.dtype)
-
-        dim_weights = self._loss_weight_vector(
-            "action_loss_dim_weights",
-            action_dim,
-            squared_error.device,
-            squared_error.dtype,
-        )
-        if dim_weights is not None:
-            weights = weights * dim_weights.view(1, 1, action_dim)
-
-        time_weights = self._loss_weight_vector(
-            "action_loss_time_weights",
-            horizon,
-            squared_error.device,
-            squared_error.dtype,
-        )
-        if time_weights is None:
-            early_weight = float(self.config.get("action_loss_early_step_weight", 1.0))
-            late_weight = float(self.config.get("action_loss_late_step_weight", 1.0))
-            if early_weight != 1.0 or late_weight != 1.0:
-                time_weights = torch.linspace(
-                    early_weight,
-                    late_weight,
-                    steps=horizon,
-                    device=squared_error.device,
-                    dtype=squared_error.dtype,
-                )
-        if time_weights is not None:
-            weights = weights * time_weights.view(1, horizon, 1)
-
-        return (squared_error * weights).mean() / weights.mean().clamp_min(1e-8)
+        return weighted_velocity_loss(pred_actions, velocity, self.config)
 
     def forward(self, vl_embs_list: list, actions: torch.Tensor, state: torch.Tensor = None):
         """

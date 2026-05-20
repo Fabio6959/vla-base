@@ -35,6 +35,7 @@ from transformers import AutoProcessor, get_scheduler
 from starVLA.dataloader import build_dataloader
 from starVLA.model.framework.base_framework import build_framework
 from starVLA.model.framework.share_tools import apply_config_compat
+from starVLA.training.post_training.failure_aware import apply_failure_aware_post_training
 from starVLA.training.trainer_utils.config_tracker import AccessTrackedConfig, wrap_config
 from starVLA.training.trainer_utils.trainer_tools import TrainerUtils, build_param_lr_groups, setup_optimizer_and_scheduler, normalize_dotlist_args
 
@@ -463,6 +464,7 @@ if __name__ == "__main__":
     # This is idempotent and does not modify framework class signatures.
     # See bar/config_收紧.md for the rationale.
     cfg = apply_config_compat(cfg)
+    cfg = apply_failure_aware_post_training(cfg)
 
     # Store source config path for later copying to output dir
     cfg.config_yaml = args.config_yaml
