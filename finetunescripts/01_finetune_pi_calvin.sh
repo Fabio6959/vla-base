@@ -145,6 +145,7 @@ echo "Data mix           : ${DATA_MIX}"
 echo "Loader             : ${LEROBOT_VERSION}"
 echo "Freeze             : ${FREEZE_MODULES:-none}"
 echo "Action LR          : ${ACTION_LR:-1.0e-04}"
+echo "Warmup steps       : ${NUM_WARMUP_STEPS:-1000}"
 echo "Action dim weights : ${ACTION_LOSS_DIM_WEIGHTS:-none}"
 echo "Late-step weight   : ${ACTION_LOSS_LATE_STEP_WEIGHT:-1.0}"
 echo "Failure log        : ${FAILURE_AWARE_LOG_PATH:-none}"
@@ -186,6 +187,7 @@ python -m accelerate.commands.launch \
   --trainer.learning_rate.qwen_vl_interface "${QWEN_LR:-1.0e-05}" \
   --trainer.learning_rate.action_model "${ACTION_LR:-1.0e-04}" \
   --trainer.max_train_steps "${MAX_TRAIN_STEPS:-30000}" \
+  --trainer.num_warmup_steps "${NUM_WARMUP_STEPS:-1000}" \
   --trainer.save_interval "${SAVE_INTERVAL:-5000}" \
   --trainer.logging_frequency "${LOGGING_FREQUENCY:-10}" \
   --trainer.eval_interval "${EVAL_INTERVAL:-100}" \

@@ -124,6 +124,8 @@ echo "Freeze       : ${FREEZE_MODULES}"
 echo "Action model : ${ACTION_MODEL_TYPE}"
 echo "Action spec  : dim=${ACTION_DIM}, horizon=${ACTION_HORIZON}"
 echo "State input  : include_state=${INCLUDE_STATE}, state_dim=${STATE_DIM}"
+echo "Action LR    : ${ACTION_LR:-1.0e-04}"
+echo "Warmup steps : ${NUM_WARMUP_STEPS:-1000}"
 echo "Run root     : ${RUN_ROOT_DIR}"
 echo "Run id       : ${RUN_ID}"
 
@@ -145,7 +147,11 @@ python -m accelerate.commands.launch \
   --datasets.vla_data.video_backend "${VIDEO_BACKEND:-torchvision_av}" \
   --datasets.vla_data.per_device_batch_size "${PER_DEVICE_BATCH_SIZE:-16}" \
   --trainer.freeze_modules "${FREEZE_MODULES}" \
+  --trainer.learning_rate.base "${BASE_LR:-2.5e-05}" \
+  --trainer.learning_rate.qwen_vl_interface "${QWEN_LR:-1.0e-05}" \
+  --trainer.learning_rate.action_model "${ACTION_LR:-1.0e-04}" \
   --trainer.max_train_steps "${MAX_TRAIN_STEPS:-80000}" \
+  --trainer.num_warmup_steps "${NUM_WARMUP_STEPS:-1000}" \
   --trainer.save_interval "${SAVE_INTERVAL:-10000}" \
   --trainer.logging_frequency "${LOGGING_FREQUENCY:-10}" \
   --trainer.eval_interval "${EVAL_INTERVAL:-100}" \
